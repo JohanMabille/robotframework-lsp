@@ -3,7 +3,7 @@ from typing import List
 from robotframework_ls.impl.protocols import ICompletionContext
 
 
-def _create_completion_item(arg, selection, col_start, col_end):
+def _create_completion_item(label, new_text, selection, col_start, col_end):
     """
     :param IKeywordFound keyword_found:
     :param selection:
@@ -19,15 +19,12 @@ def _create_completion_item(arg, selection, col_start, col_end):
     from robocorp_ls_core.lsp import MarkupKind
     from robocorp_ls_core.lsp import CompletionItemKind
 
-    label = arg
-    text = arg
-
     text_edit = TextEdit(
         Range(
             start=Position(selection.line, col_start),
             end=Position(selection.line, col_end),
         ),
-        text,
+        new_text,
     )
 
     return CompletionItem(
@@ -43,15 +40,19 @@ def _create_completion_item(arg, selection, col_start, col_end):
 def complete(completion_context: ICompletionContext) -> List[dict]:
     from robotframework_ls.impl.protocols import IKeywordFound
 
-    ret = []
+    ret: List[dict] = []
+    sel = completion_context.sel
+    if sel.word_from_column:
+        # i.e.: if there's any word after the column, skip it (could work, but
+        # let's simplify for now).
+        return ret
 
     current_keyword_definition = completion_context.get_current_keyword_definition()
     if current_keyword_definition is not None:
         keyword_found: IKeywordFound = current_keyword_definition.keyword_found
         keyword_args = keyword_found.keyword_args
         if keyword_args:
-            sel = completion_context.sel
-            line_to_column = sel.line_to_column
+            word_to_column = sel.word_to_column
 
             for arg in keyword_args:
                 if arg.startswith("${") and arg.endswith("}"):
@@ -75,6 +76,16 @@ def complete(completion_context: ICompletionContext) -> List[dict]:
                 if arg:
                     arg += "="
 
-                ret.append(_create_completion_item(arg, sel, sel.col, sel.col))
+                col_start = sel.col
+                col_end = sel.col
+                new_text = arg
+                if word_to_column:
+                    if not arg.startswith(word_to_column):
+                        continue
+                    new_text = arg[len(word_to_column) :]
+
+                ret.append(
+                    _create_completion_item(arg, new_text, sel, col_start, col_end)
+                )
 
     return ret

@@ -303,29 +303,6 @@ Test Template    my eq"""
     assert len(found) == 1
 
 
-def test_keyword_completions_params_basic(workspace, libspec_manager, data_regression):
-    from robotframework_ls.impl.completion_context import CompletionContext
-    from robotframework_ls.impl import keyword_parameter_completions
-
-    workspace.set_root("case2", libspec_manager=libspec_manager)
-    doc = workspace.get_doc("case2.robot")
-    doc.source = """
-*** Keywords ***
-My Equal Redefined
-    [Arguments]         ${arg1}     ${arg2}
-    Should Be Equal     ${arg1}     ${arg2}
-
-*** Task ***
-Some task
-    My Equal Redefined    """
-
-    completions = keyword_parameter_completions.complete(
-        CompletionContext(doc, workspace=workspace.ws)
-    )
-
-    data_regression.check(completions)
-
-
 def test_keyword_completions_resource_does_not_exist(
     workspace, libspec_manager, data_regression
 ):
